@@ -7,9 +7,7 @@ from torch import optim
 import plotly.graph_objects as go
 from tqdm import tqdm
 
-# -----------------------------
-# 🔧 Hyperparameters (easy edit)
-# -----------------------------
+
 NUM_EPOCHS = 10
 BATCH_SIZE = 16
 LEARNING_RATE = 1e-3
@@ -18,7 +16,7 @@ TRAIN_PATH = 'datasets/train'
 VAL_PATH = 'datasets/val'
 MODEL_SAVE_PATH = 'denoiser.pth'
 LOSS_PLOT_PATH = 'training_loss_plot.png'
-# -----------------------------
+
 
 def train_model():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

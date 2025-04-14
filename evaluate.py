@@ -5,25 +5,38 @@ from torch.utils.data import DataLoader
 from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 import numpy as np
 import cv2
+import plotly.graph_objects as go
+import torch.nn.functional as F
+
+
+NOISE_STD = 0.1
+TEST_PATH = 'datasets/test'
+MODEL_PATH = 'denoiser.pth'
+LOSS_PLOT_PATH = 'test_loss_plot.png'
+
 
 def evaluate_model():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    dataset = NoisyDataset('datasets/test', noise_std=0.1)
+    dataset = NoisyDataset(TEST_PATH, noise_std=NOISE_STD)
     loader = DataLoader(dataset, batch_size=1)
 
     model = DenoiseCNN().to(device)
-    model.load_state_dict(torch.load('denoiser.pth', map_location=device))
+    model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
     model.eval()
 
     psnr_cnn, ssim_cnn = [], []
     psnr_gauss, ssim_gauss = [], []
+    mse_losses = []
 
-    for noisy, clean in loader:
+    for i, (noisy, clean) in enumerate(loader):
         noisy, clean = noisy.to(device), clean.to(device)
         with torch.no_grad():
             out = model(noisy)
+            loss = F.mse_loss(out, clean)
+            mse_losses.append(loss.item())
 
+        # Compute quality metrics
         img_clean = clean.cpu().numpy()[0, 0]
         img_cnn = out.cpu().numpy()[0, 0]
         img_noisy = noisy.cpu().numpy()[0, 0]
@@ -40,8 +53,28 @@ def evaluate_model():
         psnr_gauss.append(g_psnr)
         ssim_gauss.append(g_ssim)
 
+    # Print average results
     print(f"Avg CNN PSNR: {np.mean(psnr_cnn):.2f}, SSIM: {np.mean(ssim_cnn):.3f}")
     print(f"Avg Gaussian PSNR: {np.mean(psnr_gauss):.2f}, SSIM: {np.mean(ssim_gauss):.3f}")
+
+    # Plot per-image test loss
+    plot_test_loss(mse_losses)
+
+def plot_test_loss(losses):
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=list(range(1, len(losses) + 1)),
+        y=losses,
+        mode='lines+markers',
+        name='Test MSE Loss'
+    ))
+    fig.update_layout(
+        title='MSE Loss per Test Image',
+        xaxis_title='Image Index',
+        yaxis_title='MSE Loss',
+        template='plotly_white'
+    )
+    fig.write_image(LOSS_PLOT_PATH, width=800, height=600, scale=2)
 
 if __name__ == "__main__":
     evaluate_model()
