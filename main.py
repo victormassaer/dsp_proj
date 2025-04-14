@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import DataLoader
-from model import DenoiseCNN
+from model import get_model
 from utils import NoisyDataset
 import torch.nn.functional as F
 from torch import optim
@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 from tqdm import tqdm
 
 
-NUM_EPOCHS = 10
+NUM_EPOCHS = 30
 BATCH_SIZE = 16
 LEARNING_RATE = 1e-3
 NOISE_STD = 0.2
@@ -27,7 +27,9 @@ def train_model():
     train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_data, batch_size=BATCH_SIZE)
 
-    model = DenoiseCNN().to(device)
+    # change to model_type = "convnet" for convnet
+    # change to model_type = "unet" for mini-unet
+    model = get_model(model_type='unet').to(device)
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     train_losses = []
