@@ -7,12 +7,16 @@ import numpy as np
 import cv2
 import plotly.graph_objects as go
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
+import os
 
 
-NOISE_STD = 0.1
+NOISE_STD = 0.2
 TEST_PATH = 'datasets/test'
 MODEL_PATH = 'denoiser.pth'
 LOSS_PLOT_PATH = 'test_loss_plot.png'
+NUM_EXAMPLES_TO_SHOW = 5
+OUTPUT_COMPARE_PATH = "image_comparisons.png"
 
 
 def evaluate_model():
@@ -53,12 +57,14 @@ def evaluate_model():
         psnr_gauss.append(g_psnr)
         ssim_gauss.append(g_ssim)
 
+
     # Print average results
     print(f"Avg CNN PSNR: {np.mean(psnr_cnn):.2f}, SSIM: {np.mean(ssim_cnn):.3f}")
     print(f"Avg Gaussian PSNR: {np.mean(psnr_gauss):.2f}, SSIM: {np.mean(ssim_gauss):.3f}")
 
     # Plot per-image test loss
     plot_test_loss(mse_losses)
+    show_image_comparisons(model, dataset, device)
 
 def plot_test_loss(losses):
     fig = go.Figure()
@@ -75,6 +81,36 @@ def plot_test_loss(losses):
         template='plotly_white'
     )
     fig.write_image(LOSS_PLOT_PATH, width=800, height=600, scale=2)
+
+def show_image_comparisons(model, dataset, device):
+    model.eval()
+    fig, axes = plt.subplots(NUM_EXAMPLES_TO_SHOW, 4, figsize=(12, 3 * NUM_EXAMPLES_TO_SHOW))
+    titles = ["Original", "Noisy", "CNN Denoised", "Gaussian Filtered"]
+
+    for i in range(NUM_EXAMPLES_TO_SHOW):
+        clean, noisy = dataset[i][1].unsqueeze(0), dataset[i][0].unsqueeze(0)  # (1, 1, H, W)
+        clean, noisy = clean.to(device), noisy.to(device)
+
+        with torch.no_grad():
+            out = model(noisy)
+
+        # Convert to numpy for plotting
+        img_clean = clean.cpu().numpy()[0, 0]
+        img_noisy = noisy.cpu().numpy()[0, 0]
+        img_cnn = out.cpu().numpy()[0, 0]
+        img_gauss = cv2.GaussianBlur(img_noisy, (3, 3), 1)
+
+        images = [img_clean, img_noisy, img_cnn, img_gauss]
+
+        for j in range(4):
+            ax = axes[i, j]
+            ax.imshow(images[j], cmap='gray', vmin=0, vmax=1)
+            ax.set_title(titles[j])
+            ax.axis('off')
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_COMPARE_PATH)
+    plt.show()
 
 if __name__ == "__main__":
     evaluate_model()

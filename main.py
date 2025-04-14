@@ -11,7 +11,7 @@ from tqdm import tqdm
 NUM_EPOCHS = 10
 BATCH_SIZE = 16
 LEARNING_RATE = 1e-3
-NOISE_STD = 0.1
+NOISE_STD = 0.2
 TRAIN_PATH = 'datasets/train'
 VAL_PATH = 'datasets/val'
 MODEL_SAVE_PATH = 'denoiser.pth'
