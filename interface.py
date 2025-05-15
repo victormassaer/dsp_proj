@@ -8,13 +8,15 @@ import torch
 from PIL import Image
 import base64
 import io
+import os
 import numpy as np
 import plotly.express as px
 
 from model import get_model
 from evaluate import predict_single_image
 
-MODEL_SAVE_PATH = 'denoiser.pth'
+# MODEL_SAVE_PATH = 'denoiser.pth'
+MODEL_SAVE_PATH = os.path.join(os.path.dirname(__file__), "denoiser.pth")
 
 # Load the trained model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -61,7 +63,7 @@ def handle_image(contents):
     tensor = torch.tensor(img_array, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(device)
 
     # Denoise using evaluate_model
-    denoised_tensor, psnr, ssim = predict_single_image(model, tensor)
+    denoised_tensor, _, _ = predict_single_image(model, tensor)
 
     # Back to numpy
     noisy_img = tensor.squeeze().cpu().numpy()
@@ -115,4 +117,5 @@ def download_denoised_image(n_clicks):
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # app.run(debug=True)
+    app.run(debug=False)
