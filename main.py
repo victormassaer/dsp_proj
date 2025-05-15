@@ -46,8 +46,8 @@ def train_model(model_type="unet"):
     print("Device: ", device)
     print(torch.cuda.is_available())
 
-    train_data = NoisyDataset(TRAIN_PATH, noise_std=NOISE_STD)
-    val_data = NoisyDataset(VAL_PATH, noise_std=NOISE_STD)
+    train_data = NoisyDataset(TRAIN_PATH, random_noise=True)
+    val_data = NoisyDataset(VAL_PATH, random_noise=True)
 
     train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_data, batch_size=BATCH_SIZE)
