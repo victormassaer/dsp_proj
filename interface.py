@@ -27,10 +27,10 @@ app = dash.Dash(__name__)
 app.title = "Image Denoising Interface"
 
 app.layout = html.Div([
-    html.H2("Image Denoising with Your CNN", style={"textAlign": "center"}),
+    html.H2("Image denoising using a U-net with 2 hidden layers", style={"textAlign": "center"}),
     dcc.Upload(
         id='upload-image',
-        children=html.Div(['Drag and Drop or ', html.A('Select Image')]),
+        children=html.Div(['Drag and drop or ', html.A('Select image')]),
         style={
             'width': '50%', 'height': '100px', 'lineHeight': '100px',
             'borderWidth': '1px', 'borderStyle': 'dashed',
@@ -67,22 +67,31 @@ def handle_image(contents):
     noisy_img = tensor.squeeze().cpu().numpy()
     denoised_img = denoised_tensor.squeeze().cpu().numpy()
 
-    fig1 = px.imshow(noisy_img, color_continuous_scale='gray', title='Noisy Input')
-    fig2 = px.imshow(denoised_img, color_continuous_scale='gray', title='Denoised Output')
+    fig1 = px.imshow(noisy_img, color_continuous_scale='gray')
+    fig1.update_layout(
+        title={'text': "Noisy input", 'x': 0.5, 'xanchor': 'center'},
+        coloraxis_showscale=False
+    )
+
+    fig2 = px.imshow(denoised_img, color_continuous_scale='gray')
+    fig2.update_layout(
+        title={'text': "Denoised output", 'x': 0.5, 'xanchor': 'center'},
+        coloraxis_showscale=False
+    )
     
     # save denoised image for download
     app.denoised_output = denoised_img
 
     return [
         html.Div([
-            dcc.Graph(figure=fig1),
-            dcc.Graph(figure=fig2),
+            html.Div(dcc.Graph(figure=fig1), style={'width': '48%', 'display': 'inline-block'}),
+            html.Div(dcc.Graph(figure=fig2), style={'width': '48%', 'display': 'inline-block', 'marginLeft': '4%'}),
             html.Div([
-                html.Button("Download Denoised Image", id="download-btn", n_clicks=0),
+                html.Button("Download your denoised image", id="download-btn", n_clicks=0),
                 dcc.Download(id="download-image")
             ], style={'textAlign': 'center', 'marginTop': '20px'})
         ])
-    ], f"PSNR: {psnr:.2f} dB | SSIM: {ssim:.4f}" if psnr is not None and ssim is not None else "No ground truth available for PSNR/SSIM"
+    ], dash.no_update
 
 
 @app.callback(
