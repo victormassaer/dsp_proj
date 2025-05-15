@@ -1,7 +1,9 @@
 # gui.py
 
 import dash
-from dash import html, dcc, Input, Output, State
+from dash import html, dcc, Input, Output, State, ctx
+from dash.dependencies import ClientsideFunction
+import tempfile
 import torch
 from PIL import Image
 import base64
@@ -67,13 +69,40 @@ def handle_image(contents):
 
     fig1 = px.imshow(noisy_img, color_continuous_scale='gray', title='Noisy Input')
     fig2 = px.imshow(denoised_img, color_continuous_scale='gray', title='Denoised Output')
+    
+    # save denoised image for download
+    app.denoised_output = denoised_img
 
     return [
         html.Div([
             dcc.Graph(figure=fig1),
             dcc.Graph(figure=fig2),
+            html.Div([
+                html.Button("Download Denoised Image", id="download-btn", n_clicks=0),
+                dcc.Download(id="download-image")
+            ], style={'textAlign': 'center', 'marginTop': '20px'})
         ])
     ], f"PSNR: {psnr:.2f} dB | SSIM: {ssim:.4f}" if psnr is not None and ssim is not None else "No ground truth available for PSNR/SSIM"
+
+
+@app.callback(
+    Output("download-image", "data"),
+    Input("download-btn", "n_clicks"),
+    prevent_initial_call=True
+)
+def download_denoised_image(n_clicks):
+    if not hasattr(app, 'denoised_output'):
+        return dash.no_update
+
+    # Omzetten naar een opslaanbare afbeelding
+    denoised_img_uint8 = (app.denoised_output * 255).astype(np.uint8)
+    pil_img = Image.fromarray(denoised_img_uint8, mode='L')
+
+    # Tijdelijk bestand maken
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
+        pil_img.save(tmp_file.name)
+        return dcc.send_file(tmp_file.name, filename="denoised_output.png")
+
 
 
 if __name__ == '__main__':
