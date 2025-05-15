@@ -1,5 +1,5 @@
 import torch
-from model import DenoiseCNN
+from model import get_model
 from utils import NoisyDataset
 from torch.utils.data import DataLoader
 from skimage.metrics import peak_signal_noise_ratio, structural_similarity
@@ -8,25 +8,40 @@ import cv2
 import plotly.graph_objects as go
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
+from datetime import datetime
+import pytz
+tz = pytz.timezone('Europe/Brussels')
 import os
 
 
+# hyperparams for model evaluation
 NOISE_STD = 0.2
 TEST_PATH = 'datasets/test'
 MODEL_PATH = 'denoiser.pth'
-LOSS_PLOT_PATH = 'test_loss_plot.png'
+LOSS_PLOT_PATH_EVAL = "test_loss_plot.png"
 NUM_EXAMPLES_TO_SHOW = 5
 OUTPUT_COMPARE_PATH = "image_comparisons.png"
 
+# change to model_type = "convnet" for convnet
+# change to model_type = "unet" for mini-unet
+# change to model_type = "gan" for GAN-net
+MODEL_TYPE = "gan"
 
-def evaluate_model():
+
+def evaluate_model(model_type="unet"):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     dataset = NoisyDataset(TEST_PATH, noise_std=NOISE_STD)
     loader = DataLoader(dataset, batch_size=1)
 
-    model = DenoiseCNN().to(device)
-    model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
+    model = get_model(model_type=model_type).to(device)
+
+    if model_type == "gan":
+        model.generator.load_state_dict(torch.load(MODEL_PATH, map_location=device))
+        model = model.generator
+    else:
+        model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
+
     model.eval()
 
     psnr_cnn, ssim_cnn = [], []
@@ -64,7 +79,7 @@ def evaluate_model():
 
     # Plot per-image test loss
     plot_test_loss(mse_losses)
-    show_image_comparisons(model, dataset, device)
+    show_image_comparisons(model, dataset, device, model_type)
 
 def plot_test_loss(losses):
     fig = go.Figure()
@@ -80,12 +95,12 @@ def plot_test_loss(losses):
         yaxis_title='MSE Loss',
         template='plotly_white'
     )
-    fig.write_image(LOSS_PLOT_PATH, width=800, height=600, scale=2)
+    fig.write_image(LOSS_PLOT_PATH_EVAL, width=800, height=600, scale=2)
 
-def show_image_comparisons(model, dataset, device):
+def show_image_comparisons(model, dataset, device, model_type):
     model.eval()
     fig, axes = plt.subplots(NUM_EXAMPLES_TO_SHOW, 4, figsize=(12, 3 * NUM_EXAMPLES_TO_SHOW))
-    titles = ["Original", "Noisy", "CNN Denoised", "Gaussian Filtered"]
+    titles = ["Original", "Noisy", f"{model_type.upper()} Denoised", "Gaussian Filtered"]
 
     for i in range(NUM_EXAMPLES_TO_SHOW):
         clean, noisy = dataset[i][1].unsqueeze(0), dataset[i][0].unsqueeze(0)  # (1, 1, H, W)
@@ -112,5 +127,9 @@ def show_image_comparisons(model, dataset, device):
     plt.savefig(OUTPUT_COMPARE_PATH)
     plt.show()
 
+
+
 if __name__ == "__main__":
-    evaluate_model()
+    print("Started at:", datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S"))
+    evaluate_model(model_type=MODEL_TYPE)  # convnet, unet, gan
+    print("Ended at:", datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S"))
