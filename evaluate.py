@@ -28,6 +28,23 @@ OUTPUT_COMPARE_PATH = "image_comparisons.png"
 MODEL_TYPE = "gan"
 
 
+def predict_single_image(model, noisy_tensor, clean_tensor=None):
+    model.eval()
+    with torch.no_grad():
+        output = model(noisy_tensor)
+
+    output_img = output.squeeze().cpu().numpy()
+    input_img = noisy_tensor.squeeze().cpu().numpy()
+
+    psnr = ssim = None
+    if clean_tensor is not None:
+        clean_img = clean_tensor.squeeze().cpu().numpy()
+        psnr = peak_signal_noise_ratio(clean_img, output_img, data_range=1)
+        ssim = structural_similarity(clean_img, output_img, data_range=1)
+
+    return output, psnr, ssim
+
+
 def evaluate_model(model_type="unet"):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
